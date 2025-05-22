@@ -45,7 +45,7 @@ def analyze_repo(url):
 
                 # Calculate total occurrences of all categories for the percentage calculation
                 total_occurrences = (result.keyword_count + result.identifier_count + result.literal_count +
-                                     result.constant_count + result.comment_count + result.non_english_count)
+                                   result.constant_count + result.comment_count + result.non_english_count)
 
                 # Calculate the percentage for each category
                 keyword_percentage = calculate_percentage(result.keyword_count, total_occurrences)
@@ -60,10 +60,11 @@ def analyze_repo(url):
                     "file_name": py_file.name,
                     "keywords": sorted(result.keywords),
                     "identifiers": sorted(result.identifiers),
-                    "literals": result.literals,
-                    "constants": result.constants,
-                    "comments": result.comments,
-                    "non_english": result.non_english,
+                    "literals": sorted(result.literals),
+                    "constants": sorted(result.constants),
+                    "comments": sorted(result.comments),
+                    "non_english": sorted(result.non_english),
+                    "module_attrs": sorted(result.module_attrs),  # Added module attributes
                     "keyword_count": result.keyword_count,
                     "keyword_percentage": round(keyword_percentage, 2),
                     "identifier_count": result.identifier_count,
@@ -79,14 +80,37 @@ def analyze_repo(url):
                 }
                 repo_results.append(data)
 
-                # Console preview
+                # Console preview with improved formatting
                 print(f"\n📄 File: {py_file.name}")
-                print(f"  🔑 Keywords ({result.keyword_count}, {round(keyword_percentage, 2)}%):", data["keywords"])
-                print(f"  🆔 Identifiers ({result.identifier_count}, {round(identifier_percentage, 2)}%):", data["identifiers"])
-                print(f"  🔤 Literals ({result.literal_count}, {round(literal_percentage, 2)}%):", data["literals"])
-                print(f"  🔢 Constants ({result.constant_count}, {round(constant_percentage, 2)}%):", data["constants"])
-                print(f"  💬 Comments ({result.comment_count}, {round(comment_percentage, 2)}%):", data["comments"])
-                print(f"  🌐 Non-English ({result.non_english_count}, {round(non_english_percentage, 2)}%):", data["non_english"])
+                print("  🔑 Keywords ({}, {:.2f}%):".format(result.keyword_count, keyword_percentage))
+                for kw in data["keywords"]:
+                    print(f"      - {kw}")
+                    
+                print("  🆔 Identifiers ({}, {:.2f}%):".format(result.identifier_count, identifier_percentage))
+                for id in data["identifiers"]:
+                    print(f"      - {id}")
+                    
+                print("  📦 Module Attributes:")  # New section for module attributes
+                for attr in data["module_attrs"]:
+                    print(f"      - {attr}")
+                    
+                print("  🔤 Literals ({}, {:.2f}%):".format(result.literal_count, literal_percentage))
+                for lit in data["literals"][:5]:  # Show first 5 literals to avoid cluttering
+                    print(f"      - {lit}")
+                if len(data["literals"]) > 5:
+                    print(f"      ... and {len(data['literals']) - 5} more")
+                    
+                print("  🔢 Constants ({}, {:.2f}%):".format(result.constant_count, constant_percentage))
+                for const in data["constants"]:
+                    print(f"      - {const}")
+                    
+                print("  💬 Comments ({}, {:.2f}%):".format(result.comment_count, comment_percentage))
+                for comment in data["comments"]:
+                    print(f"      - {comment}")
+                    
+                print("  🌐 Non-English ({}, {:.2f}%):".format(result.non_english_count, non_english_percentage))
+                for ne in data["non_english"]:
+                    print(f"      - {ne}")
 
             except Exception as e:
                 print(f"⚠️ Failed to parse {py_file}: {e}")
@@ -105,8 +129,8 @@ def analyze_repo(url):
             "identifier_count", "identifier_percentage", "literal_count", 
             "literal_percentage", "constant_count", "constant_percentage", 
             "comment_count", "comment_percentage", "non_english_count", 
-            "non_english_percentage", "keywords", "identifiers", "literals", 
-            "constants", "comments", "non_english"
+            "non_english_percentage", "keywords", "identifiers", "module_attrs",  # Added module_attrs
+            "literals", "constants", "comments", "non_english"
         ]
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
@@ -128,6 +152,7 @@ def analyze_repo(url):
                 "non_english_percentage": row["non_english_percentage"],
                 "keywords": ", ".join(row["keywords"]),
                 "identifiers": ", ".join(row["identifiers"]),
+                "module_attrs": ", ".join(row["module_attrs"]),  # Added module_attrs
                 "literals": ", ".join(row["literals"]),
                 "constants": ", ".join(row["constants"]),
                 "comments": ", ".join(row["comments"]),

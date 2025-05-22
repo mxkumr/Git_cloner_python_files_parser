@@ -17,6 +17,7 @@ class ParseResult(NamedTuple):
     constants: Set[str]
     comments: Set[str]
     non_english: Set[str]
+    module_attrs: Set[str]  # Added to track module attributes
     keyword_count: int
     identifier_count: int
     literal_count: int
@@ -148,22 +149,63 @@ class PythonAstVisitor(ast.NodeVisitor):
         self.constants = set()
         self.comments = set()
         self.non_english = set()
+        self.imported_modules = set()  # Track imported modules
+        self.module_attrs = set()      # Track module attributes/methods
+
+    def visit_Import(self, node):
+        """Handle import statements"""
+        for name in node.names:
+            # Add the module name to both imported_modules and identifiers
+            module_name = name.name.split('.')[0]  # Get the base module name
+            self.imported_modules.add(name.name)
+            self.identifiers.add(module_name)  # Add base module name to identifiers
+        self.generic_visit(node)
+
+    def visit_ImportFrom(self, node):
+        """Handle from ... import statements"""
+        if node.module:
+            # Add the base module name to both imported_modules and identifiers
+            module_name = node.module.split('.')[0]  # Get the base module name
+            self.imported_modules.add(node.module)
+            self.identifiers.add(module_name)  # Add base module name to identifiers
+        for name in node.names:
+            if node.module:
+                self.module_attrs.add(f"{node.module}.{name.name}")
+            else:
+                self.module_attrs.add(name.name)
+        self.generic_visit(node)
+
+    def visit_Attribute(self, node):
+        """Handle class attributes and module attributes"""
+        attr_name = node.attr
+        # Build full attribute path
+        parts = []
+        current = node
+        while isinstance(current, ast.Attribute):
+            parts.append(current.attr)
+            current = current.value
+        if isinstance(current, ast.Name):
+            parts.append(current.id)
+            # Reverse to get correct order
+            full_path = '.'.join(reversed(parts))
+            if current.id in self.imported_modules:
+                self.module_attrs.add(full_path)
+                return
+        
+        # If not a module attribute, process normally
+        self.identifiers.add(attr_name)
+        if is_non_english(attr_name):
+            self.non_english.add(attr_name)
+        self.generic_visit(node)
 
     def visit_Name(self, node):
         """Handle variable and function names"""
         name = node.id
-        self.identifiers.add(name)
-        if is_non_english(name):
-            # For identifiers, store the exact name
-            self.non_english.add(name)
-        self.generic_visit(node)
-
-    def visit_Attribute(self, node):
-        """Handle class attributes (e.g., self.名前)"""
-        attr_name = node.attr
-        self.identifiers.add(attr_name)
-        if is_non_english(attr_name):
-            self.non_english.add(attr_name)
+        # Only add to identifiers if it's not a module or module attribute
+        if name not in self.imported_modules and not any(name in attr for attr in self.module_attrs):
+            self.identifiers.add(name)
+            if is_non_english(name):
+                self.non_english.add(name)
         self.generic_visit(node)
 
     def visit_Str(self, node):
@@ -276,6 +318,7 @@ def analyze_code(code: str) -> ParseResult:
         constants=visitor.constants,
         comments=comments,
         non_english=all_non_english,
+        module_attrs=visitor.module_attrs,  # Added module attributes to result
         keyword_count=len(visitor.keywords),
         identifier_count=len(visitor.identifiers),
         literal_count=len(visitor.literals),
