@@ -15,8 +15,27 @@ logger = logging.getLogger(__name__)
 from python_code_parser import analyze_code  # Ensure this imports the updated version
 
 REPO_LIST = [
-    "https://github.com/telekom/ki-in-schulen",
-]
+    "https://github.com/fighting41love/funNLP",
+    "https://github.com/d2l-ai/d2l-zh",
+    "https://github.com/hankcs/HanLP",
+    "https://github.com/fxsjy/jieba",
+    "https://github.com/timqian/chinese-independent-blogs",
+    "https://github.com/ymcui/Chinese-LLaMA-Alpaca",
+    "https://github.com/subframe7536/maple-font",
+    "https://github.com/LlamaFamily/Llama-Chinese",
+    "https://github.com/Embedding/Chinese-Word-Vectors",
+    "https://github.com/EmbraceAGI/awesome-chatgpt-zh",
+    "https://github.com/ymcui/Chinese-BERT-wwm",
+    "https://github.com/MorvanZhou/Reinforcement-learning-with-tensorflow",
+    "https://github.com/hoochanlon/hamulete",
+    "https://github.com/nl8590687/ASRT_SpeechRecognition",
+    "https://github.com/ymcui/Chinese-LLaMA-Alpaca-2",
+    "https://github.com/wzpan/wukong-robot",
+    "https://github.com/lancopku/pkuseg-python",
+    "https://github.com/pengxiao-song/LaWGPT",
+    "https://github.com/649453932/Chinese-Text-Classification-Pytorch",
+    "https://github.com/tangqiaoboy/iOSBlogCN",
+    ]
 
 class RepoStats:
     def __init__(self):

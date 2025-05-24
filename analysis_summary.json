@@ -1,11 +1,11 @@
 {
   "summary_stats": {
-    "total_repositories": 10,
-    "successfully_cloned": 10,
+    "total_repositories": 20,
+    "successfully_cloned": 20,
     "failed_to_clone": 0,
-    "repositories_with_python": 8,
-    "total_python_files": 591,
-    "total_files_with_non_english": 155
+    "repositories_with_python": 17,
+    "total_python_files": 885,
+    "total_files_with_non_english": 275
   },
   "repository_details": {
     "https://github.com/fighting41love/funNLP": {
@@ -44,10 +44,10 @@
       "non_english_files_count": 8,
       "error": null
     },
-    "https://github.com/subframe7536/maple-font/tree/chinese": {
+    "https://github.com/subframe7536/maple-font": {
       "cloned_successfully": true,
-      "python_files_count": 0,
-      "non_english_files_count": 0,
+      "python_files_count": 76,
+      "non_english_files_count": 6,
       "error": null
     },
     "https://github.com/LlamaFamily/Llama-Chinese": {
@@ -63,6 +63,66 @@
       "error": null
     },
     "https://github.com/EmbraceAGI/awesome-chatgpt-zh": {
+      "cloned_successfully": true,
+      "python_files_count": 1,
+      "non_english_files_count": 1,
+      "error": null
+    },
+    "https://github.com/ymcui/Chinese-BERT-wwm": {
+      "cloned_successfully": true,
+      "python_files_count": 0,
+      "non_english_files_count": 0,
+      "error": null
+    },
+    "https://github.com/MorvanZhou/Reinforcement-learning-with-tensorflow": {
+      "cloned_successfully": true,
+      "python_files_count": 56,
+      "non_english_files_count": 10,
+      "error": null
+    },
+    "https://github.com/hoochanlon/hamulete": {
+      "cloned_successfully": true,
+      "python_files_count": 0,
+      "non_english_files_count": 0,
+      "error": null
+    },
+    "https://github.com/nl8590687/ASRT_SpeechRecognition": {
+      "cloned_successfully": true,
+      "python_files_count": 26,
+      "non_english_files_count": 25,
+      "error": null
+    },
+    "https://github.com/ymcui/Chinese-LLaMA-Alpaca-2": {
+      "cloned_successfully": true,
+      "python_files_count": 40,
+      "non_english_files_count": 17,
+      "error": null
+    },
+    "https://github.com/wzpan/wukong-robot": {
+      "cloned_successfully": true,
+      "python_files_count": 58,
+      "non_english_files_count": 43,
+      "error": null
+    },
+    "https://github.com/lancopku/pkuseg-python": {
+      "cloned_successfully": true,
+      "python_files_count": 14,
+      "non_english_files_count": 2,
+      "error": null
+    },
+    "https://github.com/pengxiao-song/LaWGPT": {
+      "cloned_successfully": true,
+      "python_files_count": 12,
+      "non_english_files_count": 5,
+      "error": null
+    },
+    "https://github.com/649453932/Chinese-Text-Classification-Pytorch": {
+      "cloned_successfully": true,
+      "python_files_count": 11,
+      "non_english_files_count": 11,
+      "error": null
+    },
+    "https://github.com/tangqiaoboy/iOSBlogCN": {
       "cloned_successfully": true,
       "python_files_count": 1,
       "non_english_files_count": 1,
