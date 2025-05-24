@@ -15,26 +15,7 @@ logger = logging.getLogger(__name__)
 from python_code_parser import analyze_code  # Ensure this imports the updated version
 
 REPO_LIST = [
-    "https://github.com/lonePatient/awesome-pretrained-chinese-nlp-models",
-    "https://github.com/d2l-ai/d2l-zh",
-    "https://github.com/hankcs/HanLP",
-    "https://github.com/fxsjy/jieba",
-    "https://github.com/timqian/chinese-independent-blogs",
-    "https://github.com/ymcui/Chinese-LLaMA-Alpaca",
-    "https://github.com/subframe7536/maple-font/tree/chinese",
-    "https://github.com/LlamaFamily/Llama-Chinese",
-    "https://github.com/Embedding/Chinese-Word-Vectors",
-    "https://github.com/EmbraceAGI/awesome-chatgpt-zh",
-    "https://github.com/ymcui/Chinese-BERT-wwm",
-    "https://github.com/MorvanZhou/Reinforcement-learning-with-tensorflow",
-    "https://github.com/hoochanlon/hamulete",
-    "https://github.com/nl8590687/ASRT_SpeechRecognition",
-    "https://github.com/ymcui/Chinese-LLaMA-Alpaca-2",
-    "https://github.com/wzpan/wukong-robot",
-    "https://github.com/lancopku/pkuseg-python",
-    "https://github.com/pengxiao-song/LaWGPT",
-    "https://github.com/649453932/Chinese-Text-Classification-Pytorch",
-    "https://github.com/tangqiaoboy/iOSBlogCN"
+    "https://github.com/telekom/ki-in-schulen",
 ]
 
 class RepoStats:
@@ -128,19 +109,7 @@ def analyze_repo(repo_url: str, stats: RepoStats) -> Dict:
                         
                         results['files'].append({
                             'file_path': os.path.relpath(file_path, repo_path),
-                            'analysis': {
-                                'keyword_count': analysis.keyword_count,
-                                'identifier_count': analysis.identifier_count,
-                                'literal_count': analysis.literal_count,
-                                'constant_count': analysis.constant_count,
-                                'comment_count': analysis.comment_count,
-                                'non_english_count': analysis.non_english_count,
-                                'function_count': analysis.function_count,
-                                'class_count': analysis.class_count,
-                                'variable_count': analysis.variable_count,
-                                'docstring_count': analysis.docstring_count,
-                                'has_non_english': has_non_english
-                            }
+                            'analysis': analysis.to_dict()  # Use the new to_dict() method
                         })
                     except Exception as e:
                         logger.error(f"Error analyzing {file_path}: {str(e)}")

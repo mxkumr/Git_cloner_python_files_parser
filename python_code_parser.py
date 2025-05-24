@@ -33,13 +33,43 @@ class ParseResult(NamedTuple):
     variable_count: int      # Added count
     docstring_count: int     # Added count
 
+    def to_dict(self):
+        """Convert ParseResult to a dictionary with both counts and actual instances"""
+        return {
+            'counts': {
+                'keyword_count': self.keyword_count,
+                'identifier_count': self.identifier_count,
+                'literal_count': self.literal_count,
+                'constant_count': self.constant_count,
+                'comment_count': self.comment_count,
+                'non_english_count': self.non_english_count,
+                'function_count': self.function_count,
+                'class_count': self.class_count,
+                'variable_count': self.variable_count,
+                'docstring_count': self.docstring_count
+            },
+            'instances': {
+                'keywords': list(self.keywords),
+                'identifiers': list(self.identifiers),
+                'literals': list(self.literals),
+                'constants': list(self.constants),
+                'comments': list(self.comments),
+                'non_english': list(self.non_english),
+                'module_attrs': list(self.module_attrs),
+                'function_names': list(self.function_names),
+                'class_names': list(self.class_names),
+                'variables': list(self.variables),
+                'docstrings': list(self.docstrings)
+            }
+        }
+
 def is_english_word(text: str) -> bool:
     """
     Check if a word appears to be English.
     Returns True if the word contains only ASCII letters, numbers, and common punctuation.
     """
     # Remove common programming symbols and numbers
-    text = re.sub(r'[0-9_\-\.:]', '', text)
+    text = re.sub(r'[0-9_\-.:;]', '', text)
     
     # If nothing left after removing symbols, consider it English
     if not text:
@@ -95,7 +125,7 @@ def is_non_english(text: str) -> bool:
         
     # Remove comment markers and common punctuation
     text = text.strip('# ')
-    text = re.sub(r'[!@#$%^&*(),.?":{}|<>]', '', text)
+    text = re.sub(r'[!@#$%^&*()?":{}|<>]', '', text)
     
     # Check for non-ASCII characters directly in identifiers
     if any(ord(c) > 127 for c in text):
@@ -383,7 +413,7 @@ def analyze_code(code: str) -> ParseResult:
         identifiers=visitor.identifiers,
         literals=visitor.literals,
         constants=visitor.constants,
-        comments=actual_comments,  # Use filtered comments
+        comments=actual_comments,
         non_english=all_non_english,
         module_attrs=visitor.module_attrs,
         function_names=visitor.function_names,
@@ -394,7 +424,7 @@ def analyze_code(code: str) -> ParseResult:
         identifier_count=len(visitor.identifiers),
         literal_count=len(visitor.literals),
         constant_count=len(visitor.constants),
-        comment_count=len(actual_comments),  # Use filtered comments count
+        comment_count=len(actual_comments),
         non_english_count=len(all_non_english),
         function_count=len(visitor.function_names),
         class_count=len(visitor.class_names),
