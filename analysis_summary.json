@@ -1,0 +1,72 @@
+{
+  "summary_stats": {
+    "total_repositories": 10,
+    "successfully_cloned": 10,
+    "failed_to_clone": 0,
+    "repositories_with_python": 8,
+    "total_python_files": 591,
+    "total_files_with_non_english": 155
+  },
+  "repository_details": {
+    "https://github.com/fighting41love/funNLP": {
+      "cloned_successfully": true,
+      "python_files_count": 0,
+      "non_english_files_count": 0,
+      "error": null
+    },
+    "https://github.com/d2l-ai/d2l-zh": {
+      "cloned_successfully": true,
+      "python_files_count": 14,
+      "non_english_files_count": 5,
+      "error": null
+    },
+    "https://github.com/hankcs/HanLP": {
+      "cloned_successfully": true,
+      "python_files_count": 475,
+      "non_english_files_count": 96,
+      "error": null
+    },
+    "https://github.com/fxsjy/jieba": {
+      "cloned_successfully": true,
+      "python_files_count": 60,
+      "non_english_files_count": 32,
+      "error": null
+    },
+    "https://github.com/timqian/chinese-independent-blogs": {
+      "cloned_successfully": true,
+      "python_files_count": 3,
+      "non_english_files_count": 3,
+      "error": null
+    },
+    "https://github.com/ymcui/Chinese-LLaMA-Alpaca": {
+      "cloned_successfully": true,
+      "python_files_count": 18,
+      "non_english_files_count": 8,
+      "error": null
+    },
+    "https://github.com/subframe7536/maple-font/tree/chinese": {
+      "cloned_successfully": true,
+      "python_files_count": 0,
+      "non_english_files_count": 0,
+      "error": null
+    },
+    "https://github.com/LlamaFamily/Llama-Chinese": {
+      "cloned_successfully": true,
+      "python_files_count": 18,
+      "non_english_files_count": 10,
+      "error": null
+    },
+    "https://github.com/Embedding/Chinese-Word-Vectors": {
+      "cloned_successfully": true,
+      "python_files_count": 2,
+      "non_english_files_count": 0,
+      "error": null
+    },
+    "https://github.com/EmbraceAGI/awesome-chatgpt-zh": {
+      "cloned_successfully": true,
+      "python_files_count": 1,
+      "non_english_files_count": 1,
+      "error": null
+    }
+  }
+}

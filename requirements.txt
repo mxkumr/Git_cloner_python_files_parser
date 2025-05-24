@@ -1,0 +1,2 @@
+gitpython>=3.1.40
+langdetect>=1.0.9 

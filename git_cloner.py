@@ -4,163 +4,227 @@ import subprocess
 import json
 import csv
 from pathlib import Path
+import logging
+from typing import Dict, List
+from collections import defaultdict
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 from python_code_parser import analyze_code  # Ensure this imports the updated version
 
 REPO_LIST = [
-    "https://github.com/leifengwl/MoGuDing-Auto",
-    # Add more repos as needed
+    "https://github.com/fighting41love/funNLP",
+    "https://github.com/d2l-ai/d2l-zh",
+    "https://github.com/hankcs/HanLP",
+    "https://github.com/fxsjy/jieba",
+    "https://github.com/timqian/chinese-independent-blogs",
+    "https://github.com/ymcui/Chinese-LLaMA-Alpaca",
+    "https://github.com/subframe7536/maple-font/tree/chinese",
+    "https://github.com/LlamaFamily/Llama-Chinese",
+    "https://github.com/Embedding/Chinese-Word-Vectors",
+    "https://github.com/EmbraceAGI/awesome-chatgpt-zh"
 ]
 
-def clone_repo(url, destination):
-    result = subprocess.run(["git", "clone", "--depth", "1", url, destination], capture_output=True)
-    return result.returncode == 0
+class RepoStats:
+    def __init__(self):
+        self.total_repos = len(REPO_LIST)
+        self.cloned_repos = 0
+        self.failed_repos = 0
+        self.repos_with_python = 0
+        self.total_python_files = 0
+        self.total_non_english_content = 0
+        self.repo_details = defaultdict(lambda: {
+            'cloned': False,
+            'python_files': 0,
+            'non_english_files': 0,
+            'error': None
+        })
+        
+    def add_repo(self, repo_url: str):
+        pass  # Already initialized in defaultdict
+        
+    def mark_cloned(self, repo_url: str, success: bool, error: str = None):
+        self.repo_details[repo_url]['cloned'] = success
+        if success:
+            self.cloned_repos += 1
+        else:
+            self.failed_repos += 1
+            self.repo_details[repo_url]['error'] = error
+            
+    def add_python_file(self, repo_url: str, has_non_english: bool = False):
+        self.repo_details[repo_url]['python_files'] += 1
+        self.total_python_files += 1
+        if self.repo_details[repo_url]['python_files'] == 1:
+            self.repos_with_python += 1
+        if has_non_english:
+            self.repo_details[repo_url]['non_english_files'] += 1
+            self.total_non_english_content += 1
 
-def find_py_files(repo_path):
-    return list(Path(repo_path).rglob("*.py"))
+def clone_repository(repo_url: str, temp_dir: str) -> tuple[bool, str]:
+    """Clone a repository to a temporary directory."""
+    try:
+        # Fix URL if it contains /tree/ (which is not a valid git URL)
+        if '/tree/' in repo_url:
+            repo_url = repo_url.split('/tree/')[0]
+            logger.info(f"Modified URL to: {repo_url}")
+            
+        subprocess.run(['git', 'clone', '--depth', '1', repo_url], 
+                      cwd=temp_dir, 
+                      check=True,
+                      capture_output=True,
+                      text=True)
+        return True, ""
+    except subprocess.CalledProcessError as e:
+        return False, str(e.stderr)
 
-def calculate_percentage(count, total):
-    if total == 0:
-        return 0
-    return (count / total) * 100
-
-def analyze_repo(url):
-    print(f"\n🔽 Cloning: {url}")
-    repo_results = []
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        success = clone_repo(url, tmpdir)
+def analyze_repo(repo_url: str, stats: RepoStats) -> Dict:
+    """Analyze a single repository."""
+    stats.add_repo(repo_url)
+    
+    with tempfile.TemporaryDirectory() as temp_dir:
+        success, error = clone_repository(repo_url, temp_dir)
+        stats.mark_cloned(repo_url, success, error)
+        
         if not success:
-            print(f"❌ Failed to clone {url}")
-            return
+            logger.error(f"Failed to clone {repo_url}: {error}")
+            return None
+            
+        repo_name = repo_url.split('/')[-1]
+        repo_path = os.path.join(temp_dir, repo_name)
+        
+        results = {
+            'repository': repo_url,
+            'files': []
+        }
+        
+        for root, _, files in os.walk(repo_path):
+            for file in files:
+                if file.endswith('.py'):
+                    file_path = os.path.join(root, file)
+                    try:
+                        with open(file_path, 'r', encoding='utf-8') as f:
+                            content = f.read()
+                            
+                        analysis = analyze_code(content)
+                        has_non_english = False
+                        
+                        # Check for non-English content in various fields
+                        if analysis.non_english_count > 0:
+                            has_non_english = True
+                            
+                        stats.add_python_file(repo_url, has_non_english)
+                        
+                        results['files'].append({
+                            'file_path': os.path.relpath(file_path, repo_path),
+                            'analysis': {
+                                'keyword_count': analysis.keyword_count,
+                                'identifier_count': analysis.identifier_count,
+                                'literal_count': analysis.literal_count,
+                                'constant_count': analysis.constant_count,
+                                'comment_count': analysis.comment_count,
+                                'non_english_count': analysis.non_english_count,
+                                'function_count': analysis.function_count,
+                                'class_count': analysis.class_count,
+                                'variable_count': analysis.variable_count,
+                                'docstring_count': analysis.docstring_count,
+                                'has_non_english': has_non_english
+                            }
+                        })
+                    except Exception as e:
+                        logger.error(f"Error analyzing {file_path}: {str(e)}")
+                        
+        return results
 
-        py_files = find_py_files(tmpdir)
-        print(f"📂 Found {len(py_files)} Python files.")
+def write_summary(stats: RepoStats):
+    """Write analysis summary to a separate file."""
+    summary = {
+        'summary_stats': {
+            'total_repositories': stats.total_repos,
+            'successfully_cloned': stats.cloned_repos,
+            'failed_to_clone': stats.failed_repos,
+            'repositories_with_python': stats.repos_with_python,
+            'total_python_files': stats.total_python_files,
+            'total_files_with_non_english': stats.total_non_english_content
+        },
+        'repository_details': {}
+    }
+    
+    for repo_url, details in stats.repo_details.items():
+        summary['repository_details'][repo_url] = {
+            'cloned_successfully': details['cloned'],
+            'python_files_count': details['python_files'],
+            'non_english_files_count': details['non_english_files'],
+            'error': details['error']
+        }
+        
+    with open('analysis_summary.json', 'w', encoding='utf-8') as f:
+        json.dump(summary, f, indent=2, ensure_ascii=False)
+    logger.info("\n📊 Summary written to analysis_summary.json")
 
-        for py_file in py_files:
-            try:
-                with open(py_file, "r", encoding="utf-8") as f:
-                    code = f.read()
-                result = analyze_code(code)
-
-                # Calculate total occurrences of all categories for the percentage calculation
-                total_occurrences = (result.keyword_count + result.identifier_count + result.literal_count +
-                                   result.constant_count + result.comment_count + result.non_english_count)
-
-                # Calculate the percentage for each category
-                keyword_percentage = calculate_percentage(result.keyword_count, total_occurrences)
-                identifier_percentage = calculate_percentage(result.identifier_count, total_occurrences)
-                literal_percentage = calculate_percentage(result.literal_count, total_occurrences)
-                constant_percentage = calculate_percentage(result.constant_count, total_occurrences)
-                comment_percentage = calculate_percentage(result.comment_count, total_occurrences)
-                non_english_percentage = calculate_percentage(result.non_english_count, total_occurrences)
-
-                data = {
-                    "repo_url": url,
-                    "file_name": py_file.name,
-                    "keywords": sorted(result.keywords),
-                    "identifiers": sorted(result.identifiers),
-                    "literals": sorted(result.literals),
-                    "constants": sorted(result.constants),
-                    "comments": sorted(result.comments),
-                    "non_english": sorted(result.non_english),
-                    "module_attrs": sorted(result.module_attrs),  # Added module attributes
-                    "keyword_count": result.keyword_count,
-                    "keyword_percentage": round(keyword_percentage, 2),
-                    "identifier_count": result.identifier_count,
-                    "identifier_percentage": round(identifier_percentage, 2),
-                    "literal_count": result.literal_count,
-                    "literal_percentage": round(literal_percentage, 2),
-                    "constant_count": result.constant_count,
-                    "constant_percentage": round(constant_percentage, 2),
-                    "comment_count": result.comment_count,
-                    "comment_percentage": round(comment_percentage, 2),
-                    "non_english_count": result.non_english_count,
-                    "non_english_percentage": round(non_english_percentage, 2)
-                }
-                repo_results.append(data)
-
-                # Console preview with improved formatting
-                print(f"\n📄 File: {py_file.name}")
-                print("  🔑 Keywords ({}, {:.2f}%):".format(result.keyword_count, keyword_percentage))
-                for kw in data["keywords"]:
-                    print(f"      - {kw}")
-                    
-                print("  🆔 Identifiers ({}, {:.2f}%):".format(result.identifier_count, identifier_percentage))
-                for id in data["identifiers"]:
-                    print(f"      - {id}")
-                    
-                print("  📦 Module Attributes:")  # New section for module attributes
-                for attr in data["module_attrs"]:
-                    print(f"      - {attr}")
-                    
-                print("  🔤 Literals ({}, {:.2f}%):".format(result.literal_count, literal_percentage))
-                for lit in data["literals"][:5]:  # Show first 5 literals to avoid cluttering
-                    print(f"      - {lit}")
-                if len(data["literals"]) > 5:
-                    print(f"      ... and {len(data['literals']) - 5} more")
-                    
-                print("  🔢 Constants ({}, {:.2f}%):".format(result.constant_count, constant_percentage))
-                for const in data["constants"]:
-                    print(f"      - {const}")
-                    
-                print("  💬 Comments ({}, {:.2f}%):".format(result.comment_count, comment_percentage))
-                for comment in data["comments"]:
-                    print(f"      - {comment}")
-                    
-                print("  🌐 Non-English ({}, {:.2f}%):".format(result.non_english_count, non_english_percentage))
-                for ne in data["non_english"]:
-                    print(f"      - {ne}")
-
-            except Exception as e:
-                print(f"⚠️ Failed to parse {py_file}: {e}")
-
-    # JSON Output
-    json_file = "analysis_output.json"
-    with open(json_file, "w", encoding="utf-8") as f:
-        json.dump(repo_results, f, ensure_ascii=False, indent=2)
-    print(f"\n📝 JSON written to {json_file}")
-
-    # CSV Output
-    csv_file = "analysis_output.csv"
-    with open(csv_file, "w", encoding="utf-8", newline="") as f:
-        fieldnames = [
-            "repo_url", "file_name", "keyword_count", "keyword_percentage", 
-            "identifier_count", "identifier_percentage", "literal_count", 
-            "literal_percentage", "constant_count", "constant_percentage", 
-            "comment_count", "comment_percentage", "non_english_count", 
-            "non_english_percentage", "keywords", "identifiers", "module_attrs",  # Added module_attrs
-            "literals", "constants", "comments", "non_english"
-        ]
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
-        for row in repo_results:
-            writer.writerow({
-                "repo_url": row["repo_url"],
-                "file_name": row["file_name"],
-                "keyword_count": row["keyword_count"],
-                "keyword_percentage": row["keyword_percentage"],
-                "identifier_count": row["identifier_count"],
-                "identifier_percentage": row["identifier_percentage"],
-                "literal_count": row["literal_count"],
-                "literal_percentage": row["literal_percentage"],
-                "constant_count": row["constant_count"],
-                "constant_percentage": row["constant_percentage"],
-                "comment_count": row["comment_count"],
-                "comment_percentage": row["comment_percentage"],
-                "non_english_count": row["non_english_count"],
-                "non_english_percentage": row["non_english_percentage"],
-                "keywords": ", ".join(row["keywords"]),
-                "identifiers": ", ".join(row["identifiers"]),
-                "module_attrs": ", ".join(row["module_attrs"]),  # Added module_attrs
-                "literals": ", ".join(row["literals"]),
-                "constants": ", ".join(row["constants"]),
-                "comments": ", ".join(row["comments"]),
-                "non_english": ", ".join(row["non_english"])
-            })
-    print(f"📄 CSV written to {csv_file}")
+def print_summary(stats: RepoStats):
+    """Print a detailed summary to console."""
+    logger.info("==================================================")
+    logger.info("REPOSITORY ANALYSIS SUMMARY")
+    logger.info("==================================================")
+    logger.info(f"Total repositories to process: {stats.total_repos}")
+    logger.info(f"Successfully cloned: {stats.cloned_repos}")
+    logger.info(f"Failed to clone: {stats.failed_repos}")
+    logger.info(f"Repositories with Python files: {stats.repos_with_python}")
+    logger.info(f"Total Python files analyzed: {stats.total_python_files}")
+    logger.info(f"Total files with non-English content: {stats.total_non_english_content}")
+    logger.info("\nRepository Details:")
+    
+    for repo_url, details in stats.repo_details.items():
+        logger.info(f"\n{repo_url}:")
+        logger.info(f"  - Cloned successfully: {details['cloned']}")
+        logger.info(f"  - Python files: {details['python_files']}")
+        logger.info(f"  - Files with non-English content: {details['non_english_files']}")
+        if details['error']:
+            logger.info(f"  - Error: {details['error']}")
+            
+    logger.info("==================================================")
 
 if __name__ == "__main__":
+    all_results = []
+    stats = RepoStats()
+    
     for repo_url in REPO_LIST:
         if repo_url.strip():
-            analyze_repo(repo_url)
+            try:
+                results = analyze_repo(repo_url, stats)
+                if results:
+                    all_results.append(results)
+            except Exception as e:
+                logger.error(f"Error processing repository {repo_url}: {str(e)}")
+                
+    # Write detailed results to JSON
+    output = {
+        'summary': {
+            'total_repositories': stats.total_repos,
+            'successfully_cloned': stats.cloned_repos,
+            'failed_to_clone': stats.failed_repos,
+            'repositories_with_python': stats.repos_with_python,
+            'total_python_files': stats.total_python_files,
+            'total_files_with_non_english': stats.total_non_english_content,
+            'repository_details': {
+                url: {
+                    'cloned': details['cloned'],
+                    'python_files': details['python_files'],
+                    'non_english_files': details['non_english_files'],
+                    'error': details['error']
+                }
+                for url, details in stats.repo_details.items()
+            }
+        },
+        'analysis_results': all_results
+    }
+    
+    with open('analysis_output.json', 'w', encoding='utf-8') as f:
+        json.dump(output, f, indent=2, ensure_ascii=False)
+    logger.info("📝 JSON written to analysis_output.json")
+    
+    # Write and print summary
+    write_summary(stats)
+    print_summary(stats)

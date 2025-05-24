@@ -18,12 +18,20 @@ class ParseResult(NamedTuple):
     comments: Set[str]
     non_english: Set[str]
     module_attrs: Set[str]  # Added to track module attributes
+    function_names: Set[str]  # Added for function names
+    class_names: Set[str]     # Added for class names
+    variables: Set[str]       # Added for variables
+    docstrings: Set[str]      # Added for docstrings
     keyword_count: int
     identifier_count: int
     literal_count: int
     constant_count: int
     comment_count: int
     non_english_count: int
+    function_count: int       # Added count
+    class_count: int         # Added count
+    variable_count: int      # Added count
+    docstring_count: int     # Added count
 
 def is_english_word(text: str) -> bool:
     """
@@ -89,6 +97,10 @@ def is_non_english(text: str) -> bool:
     text = text.strip('# ')
     text = re.sub(r'[!@#$%^&*(),.?":{}|<>]', '', text)
     
+    # Check for non-ASCII characters directly in identifiers
+    if any(ord(c) > 127 for c in text):
+        return True
+    
     # Split into words and handle compound strings
     words = []
     current_word = ''
@@ -127,7 +139,7 @@ def is_non_english(text: str) -> bool:
                 non_english_words.append(word)
     
     # If we found any non-English words, return True
-    return len(non_english_words) > 0
+    return len(non_english_words) > 0 or any(ord(c) > 127 for c in text)
 
 def detect_language(text: str) -> str:
     """
@@ -151,13 +163,18 @@ class PythonAstVisitor(ast.NodeVisitor):
         self.non_english = set()
         self.imported_modules = set()  # Track imported modules
         self.module_attrs = set()      # Track module attributes/methods
+        self.function_names = set()    # Track function names
+        self.class_names = set()       # Track class names
+        self.variables = set()         # Track variable names
+        self.docstrings = set()        # Track docstrings
 
     def visit_Import(self, node):
         """Handle import statements"""
         for name in node.names:
             # Add the module name to both imported_modules and identifiers
             module_name = name.name.split('.')[0]  # Get the base module name
-            self.imported_modules.add(name.name)
+            asname = name.asname if name.asname else name.name
+            self.imported_modules.add(asname)  # Use the alias if present
             self.identifiers.add(module_name)  # Add base module name to identifiers
         self.generic_visit(node)
 
@@ -188,14 +205,17 @@ class PythonAstVisitor(ast.NodeVisitor):
             parts.append(current.id)
             # Reverse to get correct order
             full_path = '.'.join(reversed(parts))
-            if current.id in self.imported_modules:
+            base_module = parts[-1]  # The root module/object name
+            
+            # Check if it's a module attribute
+            if base_module in self.imported_modules:
                 self.module_attrs.add(full_path)
-                return
-        
-        # If not a module attribute, process normally
-        self.identifiers.add(attr_name)
-        if is_non_english(attr_name):
-            self.non_english.add(attr_name)
+                return  # Skip adding to identifiers if it's a module attribute
+            
+            # If not a module attribute, process normally
+            self.identifiers.add(attr_name)
+            if is_non_english(attr_name):
+                self.non_english.add(attr_name)
         self.generic_visit(node)
 
     def visit_Name(self, node):
@@ -203,6 +223,11 @@ class PythonAstVisitor(ast.NodeVisitor):
         name = node.id
         # Only add to identifiers if it's not a module or module attribute
         if name not in self.imported_modules and not any(name in attr for attr in self.module_attrs):
+            # Check if it's being used in a way that suggests it's a variable
+            if isinstance(node.ctx, (ast.Store, ast.AugStore)):
+                self.variables.add(name)
+                if is_non_english(name):
+                    self.non_english.add(name)
             self.identifiers.add(name)
             if is_non_english(name):
                 self.non_english.add(name)
@@ -233,19 +258,57 @@ class PythonAstVisitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_FunctionDef(self, node):
-        """Handle function names"""
+        """Handle function definitions"""
         name = node.name
+        self.function_names.add(name)
         self.identifiers.add(name)
+        
+        # Check for docstring
+        if (ast.get_docstring(node)):
+            self.docstrings.add(ast.get_docstring(node))
+            
         if is_non_english(name):
             self.non_english.add(name)
         self.generic_visit(node)
 
+    def visit_AsyncFunctionDef(self, node):
+        """Handle async function definitions"""
+        # Use the same logic as regular functions
+        self.visit_FunctionDef(node)
+
     def visit_ClassDef(self, node):
-        """Handle class names"""
+        """Handle class definitions"""
         name = node.name
+        self.class_names.add(name)
         self.identifiers.add(name)
+        
+        # Check for docstring
+        if (ast.get_docstring(node)):
+            self.docstrings.add(ast.get_docstring(node))
+            
         if is_non_english(name):
             self.non_english.add(name)
+        self.generic_visit(node)
+
+    def visit_Module(self, node):
+        """Handle module-level docstrings"""
+        if (ast.get_docstring(node)):
+            self.docstrings.add(ast.get_docstring(node))
+        self.generic_visit(node)
+
+    def visit_Assign(self, node):
+        """Handle variable assignments"""
+        for target in node.targets:
+            if isinstance(target, ast.Name):
+                name = target.id
+                self.variables.add(name)
+                if is_non_english(name):
+                    self.non_english.add(name)
+            elif isinstance(target, ast.Attribute):
+                # Handle attribute assignments (e.g., self.name = value)
+                attr_name = target.attr
+                if is_non_english(attr_name):
+                    self.non_english.add(attr_name)
         self.generic_visit(node)
 
 def extract_comments(source_lines):
@@ -256,7 +319,7 @@ def extract_comments(source_lines):
     in_multiline = False
     multiline_content = []
     
-    for line in source_lines:
+    for i, line in enumerate(source_lines):
         line = line.strip()
         
         # Handle multiline strings/comments
@@ -281,11 +344,12 @@ def extract_comments(source_lines):
             hash_pos = line.find('#')
             if hash_pos != -1:
                 comment = line[hash_pos:].strip()
-                comments.add(comment)
-                if is_non_english(comment):
-                    # Remove comment markers and clean up
-                    clean_comment = comment.strip('# ')
-                    non_english_comments.add(clean_comment)
+                if comment:  # Only add non-empty comments
+                    comments.add(comment)
+                    if is_non_english(comment):
+                        # Remove comment markers and clean up
+                        clean_comment = comment.strip('# ')
+                        non_english_comments.add(clean_comment)
     
     return comments, non_english_comments
 
@@ -311,20 +375,31 @@ def analyze_code(code: str) -> ParseResult:
     # Combine results
     all_non_english = visitor.non_english | non_english_comments
     
+    # Count actual comments (excluding empty lines and whitespace)
+    actual_comments = {c for c in comments if c.strip()}
+    
     return ParseResult(
         keywords=visitor.keywords,
         identifiers=visitor.identifiers,
         literals=visitor.literals,
         constants=visitor.constants,
-        comments=comments,
+        comments=actual_comments,  # Use filtered comments
         non_english=all_non_english,
-        module_attrs=visitor.module_attrs,  # Added module attributes to result
+        module_attrs=visitor.module_attrs,
+        function_names=visitor.function_names,
+        class_names=visitor.class_names,
+        variables=visitor.variables,
+        docstrings=visitor.docstrings,
         keyword_count=len(visitor.keywords),
         identifier_count=len(visitor.identifiers),
         literal_count=len(visitor.literals),
         constant_count=len(visitor.constants),
-        comment_count=len(comments),
-        non_english_count=len(all_non_english)
+        comment_count=len(actual_comments),  # Use filtered comments count
+        non_english_count=len(all_non_english),
+        function_count=len(visitor.function_names),
+        class_count=len(visitor.class_names),
+        variable_count=len(visitor.variables),
+        docstring_count=len(visitor.docstrings)
     )
 
 def analyze_file(file_path: str) -> ParseResult:
