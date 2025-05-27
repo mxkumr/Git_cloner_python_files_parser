@@ -4,6 +4,7 @@ import unicodedata
 from langdetect import detect, LangDetectException
 import logging
 import re
+import keyword
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -197,6 +198,77 @@ class PythonAstVisitor(ast.NodeVisitor):
         self.class_names = set()       # Track class names
         self.variables = set()         # Track variable names
         self.docstrings = set()        # Track docstrings
+
+    def visit(self, node):
+        """Override visit to collect keywords"""
+        node_type = type(node).__name__
+        
+        # Map AST node types to Python keywords
+        keyword_map = {
+            'FunctionDef': 'def',
+            'ClassDef': 'class',
+            'Return': 'return',
+            'Delete': 'del',
+            'For': 'for',
+            'While': 'while',
+            'If': 'if',
+            'With': 'with',
+            'Raise': 'raise',
+            'Try': 'try',
+            'Assert': 'assert',
+            'Import': 'import',
+            'ImportFrom': 'from',
+            'Global': 'global',
+            'Nonlocal': 'nonlocal',
+            'Pass': 'pass',
+            'Break': 'break',
+            'Continue': 'continue',
+            'Lambda': 'lambda',
+            'Yield': 'yield',
+            'YieldFrom': 'yield from',
+            'In': 'in',
+            'Is': 'is',
+            'And': 'and',
+            'Or': 'or',
+            'Not': 'not',
+            'True': 'True',
+            'False': 'False',
+            'None': 'None'
+        }
+        
+        if node_type in keyword_map:
+            kw = keyword_map[node_type]
+            self.keywords.add(kw)
+            logger.debug(f"Found keyword: {kw}")
+            
+        # Check for async/await keywords
+        if hasattr(node, 'is_async') and node.is_async:
+            self.keywords.add('async')
+            if isinstance(node, ast.FunctionDef):
+                self.keywords.add('await')
+                
+        # Check for 'as' keyword in imports and with statements
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            for alias in node.names:
+                if alias.asname:
+                    self.keywords.add('as')
+                    break
+        elif isinstance(node, ast.With):
+            for item in node.items:
+                if item.optional_vars:
+                    self.keywords.add('as')
+                    break
+                    
+        # Check for 'elif' and 'else' keywords
+        if isinstance(node, ast.If):
+            if node.orelse:
+                if any(isinstance(n, ast.If) for n in node.orelse):
+                    self.keywords.add('elif')
+                else:
+                    self.keywords.add('else')
+        
+        # Continue with normal visit
+        super().visit(node)
 
     def visit_Import(self, node):
         """Handle import statements"""
