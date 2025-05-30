@@ -1,5 +1,7 @@
 import unittest
 from python_code_parser import analyze_code
+import json
+from collections import defaultdict
 
 class TestParserAccuracy(unittest.TestCase):
     def test_comprehensive_code_analysis(self):
@@ -157,5 +159,162 @@ class ChildClass(TestClass):
         with self.assertRaises(SyntaxError):
             analyze_code(invalid_code)
 
+def test_accuracy():
+    # Test cases with known correct outputs
+    test_cases = {
+        # Japanese test case
+        "japanese_test": {
+            "code": '''
+# 日本語テスト
+class テストクラス:
+    def テスト関数(self):
+        変数 = "こんにちは"
+        CONSTANT_値 = 42
+        return 変数
+''',
+            "expected": {
+                "class_names": ["テストクラス"],
+                "function_names": ["テスト関数"],
+                "variables": ["変数"],
+                "constants": ["CONSTANT_値"],
+                "literals": ["こんにちは"],
+                "language": "Japanese"
+            }
+        },
+        # Chinese test case
+        "chinese_test": {
+            "code": '''
+# 中文测试
+class 测试类:
+    def 测试函数(self):
+        变量 = "你好"
+        CONSTANT_值 = 42
+        return 变量
+''',
+            "expected": {
+                "class_names": ["测试类"],
+                "function_names": ["测试函数"],
+                "variables": ["变量"],
+                "constants": ["CONSTANT_值"],
+                "literals": ["你好"],
+                "language": "Chinese"
+            }
+        },
+        # Mixed script test case
+        "mixed_test": {
+            "code": '''
+def process_data(データ: List[str]) -> Dict[str, Any]:
+    """
+    Process mixed language data
+    データを処理する
+    处理数据
+    """
+    result = {}
+    for item in データ:
+        if "テスト" in item:
+            result["test"] = True
+        elif "测试" in item:
+            result["test"] = False
+    return result
+''',
+            "expected": {
+                "function_names": ["process_data"],
+                "variables": ["データ"],
+                "docstrings": ["Process mixed language data\nデータを処理する\n处理数据"],
+                "mixed_scripts": True
+            }
+        },
+        # Emoji test case
+        "emoji_test": {
+            "code": '''
+def analyze_trend(data) -> str:
+    """Analyze trend 📈"""
+    if data > 0:
+        return "Up 📈"
+    return "Down 📉"
+''',
+            "expected": {
+                "contains_emoji": True,
+                "emoji_count": 3
+            }
+        }
+    }
+
+    scores = defaultdict(list)
+    
+    def calculate_match_score(found, expected):
+        if not expected:
+            return 100 if not found else 0
+        matches = sum(1 for item in found if item in expected)
+        total = max(len(found), len(expected))
+        return (matches / total) * 100 if total > 0 else 100
+
+    print("=== Parser Accuracy Test ===\n")
+    
+    for test_name, test_case in test_cases.items():
+        print(f"Testing {test_name}...")
+        result = analyze_code(test_case["code"])
+        expected = test_case["expected"]
+        
+        # Test different aspects
+        if "class_names" in expected:
+            score = calculate_match_score(result.class_names, set(expected["class_names"]))
+            scores["class_detection"].append(score)
+            print(f"  Class Detection: {score:.1f}%")
+            
+        if "function_names" in expected:
+            score = calculate_match_score(result.function_names, set(expected["function_names"]))
+            scores["function_detection"].append(score)
+            print(f"  Function Detection: {score:.1f}%")
+            
+        if "variables" in expected:
+            score = calculate_match_score(result.variables, set(expected["variables"]))
+            scores["variable_detection"].append(score)
+            print(f"  Variable Detection: {score:.1f}%")
+            
+        if "constants" in expected:
+            score = calculate_match_score(result.constants, set(expected["constants"]))
+            scores["constant_detection"].append(score)
+            print(f"  Constant Detection: {score:.1f}%")
+            
+        if "literals" in expected:
+            score = calculate_match_score(result.literals, set(expected["literals"]))
+            scores["literal_detection"].append(score)
+            print(f"  Literal Detection: {score:.1f}%")
+            
+        if "docstrings" in expected:
+            score = calculate_match_score(result.docstrings, set(expected["docstrings"]))
+            scores["docstring_detection"].append(score)
+            print(f"  Docstring Detection: {score:.1f}%")
+            
+        if "contains_emoji" in expected:
+            has_emoji = any("📈" in item or "📉" in item for item in result.literals)
+            score = 100 if has_emoji == expected["contains_emoji"] else 0
+            scores["emoji_detection"].append(score)
+            print(f"  Emoji Detection: {score:.1f}%")
+            
+        print()
+
+    # Calculate overall accuracy
+    category_scores = {
+        "Class Detection": sum(scores["class_detection"]) / len(scores["class_detection"]) if scores["class_detection"] else 0,
+        "Function Detection": sum(scores["function_detection"]) / len(scores["function_detection"]) if scores["function_detection"] else 0,
+        "Variable Detection": sum(scores["variable_detection"]) / len(scores["variable_detection"]) if scores["variable_detection"] else 0,
+        "Constant Detection": sum(scores["constant_detection"]) / len(scores["constant_detection"]) if scores["constant_detection"] else 0,
+        "Literal Detection": sum(scores["literal_detection"]) / len(scores["literal_detection"]) if scores["literal_detection"] else 0,
+        "Docstring Detection": sum(scores["docstring_detection"]) / len(scores["docstring_detection"]) if scores["docstring_detection"] else 0,
+        "Emoji Detection": sum(scores["emoji_detection"]) / len(scores["emoji_detection"]) if scores["emoji_detection"] else 0
+    }
+    
+    print("=== Overall Accuracy ===")
+    total_score = 0
+    for category, score in category_scores.items():
+        print(f"{category}: {score:.1f}%")
+        total_score += score
+        
+    final_score = total_score / len(category_scores)
+    print(f"\nFinal Accuracy Score: {final_score:.1f}/100")
+
 if __name__ == '__main__':
-    unittest.main(verbosity=2) 
+    unittest.main(verbosity=2)
+    test_accuracy() 
