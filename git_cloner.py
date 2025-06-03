@@ -7,6 +7,7 @@ from pathlib import Path
 import logging
 from typing import Dict, List
 from collections import defaultdict
+import re
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -15,26 +16,62 @@ logger = logging.getLogger(__name__)
 from python_code_parser import analyze_code  # Ensure this imports the updated version
 
 REPO_LIST = [
-    "https://github.com/InsaneLife/ChineseNLPCorpus",
-    "https://github.com/d2l-ai/d2l-zh",
-    "https://github.com/hankcs/HanLP",
-    "https://github.com/fxsjy/jieba",
-    "https://github.com/timqian/chinese-independent-blogs",
-    "https://github.com/ymcui/Chinese-LLaMA-Alpaca",
-    "https://github.com/subframe7536/maple-font",
-    "https://github.com/LlamaFamily/Llama-Chinese",
-    "https://github.com/Embedding/Chinese-Word-Vectors",
-    "https://github.com/EmbraceAGI/awesome-chatgpt-zh",
-    "https://github.com/ymcui/Chinese-BERT-wwm",
-    "https://github.com/MorvanZhou/Reinforcement-learning-with-tensorflow",
-    "https://github.com/hoochanlon/hamulete",
-    "https://github.com/nl8590687/ASRT_SpeechRecognition",
-    "https://github.com/ymcui/Chinese-LLaMA-Alpaca-2",
-    "https://github.com/wzpan/wukong-robot",
-    "https://github.com/lancopku/pkuseg-python",
-    "https://github.com/pengxiao-song/LaWGPT",
-    "https://github.com/649453932/Chinese-Text-Classification-Pytorch",
-    "https://github.com/tangqiaoboy/iOSBlogCN",
+    #"https://github.com/SaidBySolo/neispy",
+    #"https://github.com/jhp2060/kinikini",
+    #"https://github.com/dstle/webCrawling",
+    #"https://github.com/gunyu1019/SCHOOL-TIMETABLE",
+    #"https://github.com/PrestigeLulu/WeatherMapMaker",
+    #"https://github.com/miraedbswo/Dsm-Festival",
+    #"https://github.com/saesac/school_work_helper",
+    #"https://github.com/jihoseo2006/python",
+    #"https://github.com/BackGwa/Johnson",
+    #"https://github.com/jinyeong-afk/UniversityHomepage-WebCrawling",
+    #"https://github.com/gunyu1019/NUGU_school",
+    #"https://github.com/gunyu1019/NUGU_school_old",
+    #"https://github.com/jmh0434/Gachon_notice",
+    #"https://github.com/CLOUDFIVE-TEAM/notiU",
+    #"https://github.com/MagicalLas/KR-School-Meal-Parser",
+    #"https://github.com/seunghyeokleeme/algorithm-school",
+    #"https://github.com/acisliver/CodingCP",
+    #"https://github.com/IWANTTOGOHOME1/AlclsMessenger",
+    #"https://github.com/Jungdol/DiscordBot",
+    #"https://github.com/kwonbosung02/2019_subject",
+
+    #-----------------------------------------------------------------------------------
+    #Russian Repos
+    "https://github.com/neuromancertdi/tdi-project",
+    "https://github.com/newLisa2024/Digest_news_bot",
+    "https://github.com/GeekHunterOne/100_days_of_Python",
+    "https://github.com/Tingerlink/SimpleVirusScaner",
+    "https://github.com/denis-hik/CrackPractic",
+    "https://github.com/Lepilov/CarCalculator",
+    "https://github.com/r4hx/telegram-summary-links",
+    "https://github.com/maslov-cool/hex_viewing",
+    "https://github.com/justcipunz/KNAI",
+    "https://github.com/botrott7/wiki_short",
+
+    #-----------------------------------------------------------------------------------
+    #Chinese Repos
+    #"https://github.com/InsaneLife/ChineseNLPCorpus",
+    #"https://github.com/d2l-ai/d2l-zh",
+    #"https://github.com/hankcs/HanLP",
+    #"https://github.com/fxsjy/jieba",
+    #"https://github.com/timqian/chinese-independent-blogs",
+    #"https://github.com/ymcui/Chinese-LLaMA-Alpaca",
+    #"https://github.com/subframe7536/maple-font",
+    #"https://github.com/LlamaFamily/Llama-Chinese",
+    #"https://github.com/Embedding/Chinese-Word-Vectors",
+    #"https://github.com/EmbraceAGI/awesome-chatgpt-zh",
+    #"https://github.com/ymcui/Chinese-BERT-wwm",
+    #"https://github.com/MorvanZhou/Reinforcement-learning-with-tensorflow",
+    #"https://github.com/hoochanlon/hamulete",
+    #"https://github.com/nl8590687/ASRT_SpeechRecognition",
+    #"https://github.com/ymcui/Chinese-LLaMA-Alpaca-2",
+    #"https://github.com/wzpan/wukong-robot",
+    #"https://github.com/lancopku/pkuseg-python",
+    #"https://github.com/pengxiao-song/LaWGPT",
+    #"https://github.com/649453932/Chinese-Text-Classification-Pytorch",
+    #"https://github.com/tangqiaoboy/iOSBlogCN",
     ]
 
 class RepoStats:
@@ -71,6 +108,44 @@ class RepoStats:
         if has_non_english:
             self.repo_details[repo_url]['non_english_files'] += 1
             self.total_non_english_content += 1
+
+def remove_emojis(text):
+    """Remove only emoji characters while preserving other non-English text."""
+    if not isinstance(text, str):
+        return text
+        
+    # Unicode ranges for emojis
+    emoji_pattern = re.compile(
+        "["
+        "\U0001F600-\U0001F64F"  # emoticons
+        "\U0001F300-\U0001F5FF"  # symbols & pictographs
+        "\U0001F680-\U0001F6FF"  # transport & map symbols
+        "\U0001F1E0-\U0001F1FF"  # flags (iOS)
+        "\U00002702-\U000027B0"  # dingbats
+        "\U000024C2-\U0001F251" 
+        "]+",
+        flags=re.UNICODE
+    )
+    return emoji_pattern.sub('', text)
+
+def clean_for_json(obj):
+    """Recursively clean a dictionary/list/value for JSON serialization."""
+    if isinstance(obj, dict):
+        return {k: clean_for_json(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        # Filter out empty strings and clean remaining items
+        return [clean_for_json(item) for item in obj if not (isinstance(item, str) and not item.strip())]
+    elif isinstance(obj, str):
+        # Only remove emojis, preserve Korean characters
+        cleaned = remove_emojis(obj)
+        # If the string contains Korean characters, return it as is
+        if any(0xAC00 <= ord(c) <= 0xD7A3 or 0x1100 <= ord(c) <= 0x11FF or 0x3130 <= ord(c) <= 0x318F for c in cleaned):
+            return cleaned
+        # For non-Korean text, preserve any non-English text
+        if any(ord(c) > 127 for c in cleaned):
+            return cleaned
+        return cleaned
+    return obj
 
 def clone_repository(repo_url: str, temp_dir: str) -> tuple[bool, str]:
     """Clone a repository to a temporary directory."""
@@ -116,6 +191,11 @@ def analyze_repo(repo_url: str, stats: RepoStats) -> Dict:
                     try:
                         with open(file_path, 'r', encoding='utf-8') as f:
                             content = f.read()
+                            
+                        # Print file contents for debugging
+                        if 'WeatherMapMaker' in repo_url and file == 'file_down.py':
+                            logger.info(f"\nFile contents of {file_path}:")
+                            logger.info(content)
                             
                         analysis = analyze_code(content)
                         has_non_english = False
@@ -219,9 +299,12 @@ if __name__ == "__main__":
         'analysis_results': all_results
     }
     
+    # Clean the output dictionary to remove emojis before writing to JSON
+    cleaned_output = clean_for_json(output)
+    
     with open('analysis_output.json', 'w', encoding='utf-8') as f:
-        json.dump(output, f, indent=2, ensure_ascii=False)
-    logger.info("📝 JSON written to analysis_output.json")
+        json.dump(cleaned_output, f, indent=2, ensure_ascii=False)
+    logger.info("Analysis results written to analysis_output.json")
     
     # Write and print summary
     write_summary(stats)

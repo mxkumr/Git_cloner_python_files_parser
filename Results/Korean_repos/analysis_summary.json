@@ -1,0 +1,132 @@
+{
+  "summary_stats": {
+    "total_repositories": 20,
+    "successfully_cloned": 20,
+    "failed_to_clone": 0,
+    "repositories_with_python": 19,
+    "total_python_files": 196,
+    "total_files_with_non_english": 103
+  },
+  "repository_details": {
+    "https://github.com/SaidBySolo/neispy": {
+      "cloned_successfully": true,
+      "python_files_count": 47,
+      "non_english_files_count": 31,
+      "error": null
+    },
+    "https://github.com/jhp2060/kinikini": {
+      "cloned_successfully": true,
+      "python_files_count": 19,
+      "non_english_files_count": 3,
+      "error": null
+    },
+    "https://github.com/dstle/webCrawling": {
+      "cloned_successfully": true,
+      "python_files_count": 1,
+      "non_english_files_count": 1,
+      "error": null
+    },
+    "https://github.com/gunyu1019/SCHOOL-TIMETABLE": {
+      "cloned_successfully": true,
+      "python_files_count": 1,
+      "non_english_files_count": 1,
+      "error": null
+    },
+    "https://github.com/PrestigeLulu/WeatherMapMaker": {
+      "cloned_successfully": true,
+      "python_files_count": 2,
+      "non_english_files_count": 2,
+      "error": null
+    },
+    "https://github.com/miraedbswo/Dsm-Festival": {
+      "cloned_successfully": true,
+      "python_files_count": 32,
+      "non_english_files_count": 2,
+      "error": null
+    },
+    "https://github.com/saesac/school_work_helper": {
+      "cloned_successfully": true,
+      "python_files_count": 2,
+      "non_english_files_count": 2,
+      "error": null
+    },
+    "https://github.com/jihoseo2006/python": {
+      "cloned_successfully": true,
+      "python_files_count": 8,
+      "non_english_files_count": 1,
+      "error": null
+    },
+    "https://github.com/BackGwa/Johnson": {
+      "cloned_successfully": true,
+      "python_files_count": 2,
+      "non_english_files_count": 2,
+      "error": null
+    },
+    "https://github.com/jinyeong-afk/UniversityHomepage-WebCrawling": {
+      "cloned_successfully": true,
+      "python_files_count": 0,
+      "non_english_files_count": 0,
+      "error": null
+    },
+    "https://github.com/gunyu1019/NUGU_school": {
+      "cloned_successfully": true,
+      "python_files_count": 11,
+      "non_english_files_count": 6,
+      "error": null
+    },
+    "https://github.com/gunyu1019/NUGU_school_old": {
+      "cloned_successfully": true,
+      "python_files_count": 10,
+      "non_english_files_count": 4,
+      "error": null
+    },
+    "https://github.com/jmh0434/Gachon_notice": {
+      "cloned_successfully": true,
+      "python_files_count": 1,
+      "non_english_files_count": 1,
+      "error": null
+    },
+    "https://github.com/CLOUDFIVE-TEAM/notiU": {
+      "cloned_successfully": true,
+      "python_files_count": 9,
+      "non_english_files_count": 8,
+      "error": null
+    },
+    "https://github.com/MagicalLas/KR-School-Meal-Parser": {
+      "cloned_successfully": true,
+      "python_files_count": 3,
+      "non_english_files_count": 2,
+      "error": null
+    },
+    "https://github.com/seunghyeokleeme/algorithm-school": {
+      "cloned_successfully": true,
+      "python_files_count": 5,
+      "non_english_files_count": 4,
+      "error": null
+    },
+    "https://github.com/acisliver/CodingCP": {
+      "cloned_successfully": true,
+      "python_files_count": 23,
+      "non_english_files_count": 16,
+      "error": null
+    },
+    "https://github.com/IWANTTOGOHOME1/AlclsMessenger": {
+      "cloned_successfully": true,
+      "python_files_count": 10,
+      "non_english_files_count": 10,
+      "error": null
+    },
+    "https://github.com/Jungdol/DiscordBot": {
+      "cloned_successfully": true,
+      "python_files_count": 2,
+      "non_english_files_count": 2,
+      "error": null
+    },
+    "https://github.com/kwonbosung02/2019_subject": {
+      "cloned_successfully": true,
+      "python_files_count": 8,
+      "non_english_files_count": 5,
+      "error": null
+    }
+  }
+}

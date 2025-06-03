@@ -54,6 +54,10 @@ class ParseResult(NamedTuple):
 
     def to_dict(self):
         """Convert ParseResult to a dictionary with both counts and actual instances"""
+        def filter_empty(s: set) -> list:
+            # Keep Korean text intact
+            return [x for x in s if x and (x.strip() or any(0xAC00 <= ord(c) <= 0xD7A3 or 0x1100 <= ord(c) <= 0x11FF or 0x3130 <= ord(c) <= 0x318F for c in x))]
+            
         return {
             'counts': {
                 'keyword_count': self.keyword_count,
@@ -76,74 +80,54 @@ class ParseResult(NamedTuple):
                 'non_english_comment_count': self.non_english_comment_count
             },
             'instances': {
-                'keywords': list(self.keywords),
-                'identifiers': list(self.identifiers),
-                'literals': list(self.literals),
-                'constants': list(self.constants),
-                'comments': list(self.comments),
-                'non_english': list(self.non_english),
-                'module_attrs': list(self.module_attrs),
-                'function_names': list(self.function_names),
-                'class_names': list(self.class_names),
-                'variables': list(self.variables),
-                'docstrings': list(self.docstrings),
-                'non_english_identifiers': list(self.non_english_identifiers),
-                'non_english_literals': list(self.non_english_literals),
-                'non_english_class_names': list(self.non_english_class_names),
-                'non_english_function_names': list(self.non_english_function_names),
-                'non_english_variables': list(self.non_english_variables),
-                'non_english_docstrings': list(self.non_english_docstrings),
-                'non_english_constants': list(self.non_english_constants),
-                'non_english_comments': list(self.non_english_comments)
+                'keywords': filter_empty(self.keywords),
+                'identifiers': filter_empty(self.identifiers),
+                'literals': filter_empty(self.literals),
+                'constants': filter_empty(self.constants),
+                'comments': filter_empty(self.comments),
+                'non_english': filter_empty(self.non_english),
+                'module_attrs': filter_empty(self.module_attrs),
+                'function_names': filter_empty(self.function_names),
+                'class_names': filter_empty(self.class_names),
+                'variables': filter_empty(self.variables),
+                'docstrings': filter_empty(self.docstrings),
+                'non_english_identifiers': filter_empty(self.non_english_identifiers),
+                'non_english_literals': filter_empty(self.non_english_literals),
+                'non_english_class_names': filter_empty(self.non_english_class_names),
+                'non_english_function_names': filter_empty(self.non_english_function_names),
+                'non_english_variables': filter_empty(self.non_english_variables),
+                'non_english_docstrings': filter_empty(self.non_english_docstrings),
+                'non_english_constants': filter_empty(self.non_english_constants),
+                'non_english_comments': filter_empty(self.non_english_comments)
             }
         }
 
 def is_english_word(text: str) -> bool:
     """
-    Check if a word appears to be English.
-    Returns True if the word contains only ASCII letters, numbers, and common punctuation.
+    Enhanced check to determine if a word is English or programming-related.
     """
-    # Remove common programming symbols and numbers
-    text = re.sub(r'[0-9_\-.:;]', '', text)
+    # Common programming/technical terms that should be considered English
+    common_tech_terms = {
+        'api', 'args', 'row', 'head', 'data', 'file', 'type', 'key', 'value',
+        'id', 'url', 'uri', 'sql', 'xml', 'json', 'html', 'css', 'js',
+        'get', 'set', 'put', 'post', 'delete', 'patch', 'options',
+        'class', 'def', 'func', 'var', 'const', 'let', 'enum',
+        'true', 'false', 'null', 'none', 'undefined'
+    }
     
-    # If nothing left after removing symbols, consider it English
-    if not text:
+    # Clean the text
+    cleaned = text.lower().strip('_-[](){}.,;:#@ \t\n')
+    
+    # If nothing left after cleaning, consider it English
+    if not cleaned:
         return True
         
-    # Check if remaining text contains only ASCII letters
-    return all(ord(c) < 128 for c in text)
-
-def detect_specific_language(text: str) -> str:
-    """
-    Detect specific language of the text.
-    Returns normalized language code or 'unknown' if detection fails.
-    Common language codes:
-    - 'zh': Chinese (including zh-cn, zh-tw)
-    - 'ar': Arabic
-    - 'ja': Japanese
-    - 'ko': Korean
-    - 'ru': Russian
-    - 'hi': Hindi
-    etc.
-    """
-    try:
-        if not text or len(text.strip()) < 3:
-            return 'unknown'
-        # Skip if text contains only ASCII characters
-        if all(ord(c) < 128 for c in text):
-            return 'en'
-        
-        lang = detect(text)
-        
-        # Normalize language codes
-        if lang.startswith('zh-'):
-            return 'zh'
-        elif lang == 'bg':  # Bulgarian often confused with Russian
-            return 'ru'
-        return lang
-        
-    except Exception:
-        return 'unknown'
+    # Check if it's a common tech term
+    if cleaned in common_tech_terms:
+        return True
+    
+    # Check if it contains only ASCII letters, numbers, and common punctuation
+    return all(ord(c) < 128 and (c.isalnum() or c in '_-[](){}.,;:#@ \t\n') for c in text)
 
 def detect_languages_in_text(text: str) -> set:
     """
@@ -152,70 +136,90 @@ def detect_languages_in_text(text: str) -> set:
     """
     languages = set()
     
-    # Skip if text is too short or only contains ASCII
-    if not text or len(text.strip()) < 3 or all(ord(c) < 128 for c in text):
+    # Skip if text is empty, whitespace, or contains only ASCII
+    if not text or text.isspace() or all(ord(c) < 128 for c in text):
         return languages
     
-    # Split text into words, handling mixed scripts
-    words = []
-    current_word = ''
-    current_script = None
+    # Clean the text of common programming symbols
+    cleaned_text = re.sub(r'[!@#$%^&*()?":{}|<>]', ' ', text)
+    cleaned_text = cleaned_text.strip()
     
-    for char in text:
-        if char.isspace():
-            if current_word:
-                words.append(current_word)
-                current_word = ''
-                current_script = None
-        else:
-            char_script = 'ascii' if ord(char) < 128 else 'other'
-            if current_script and char_script != current_script:
-                if current_word:
-                    words.append(current_word)
-                current_word = ''
-            current_word += char
-            current_script = char_script
+    # Skip if nothing left after cleaning
+    if not cleaned_text:
+        return languages
     
-    if current_word:
-        words.append(current_word)
+    # First check for Korean characters (Hangul)
+    if any(0xAC00 <= ord(c) <= 0xD7A3 or 0x1100 <= ord(c) <= 0x11FF or 0x3130 <= ord(c) <= 0x318F for c in cleaned_text):
+        languages.add('ko')
+        return languages
     
-    # Analyze each word
+    # Split into words and check each word
+    words = re.findall(r'\S+', cleaned_text)
+    non_english_words = []
+    
     for word in words:
-        if any(ord(c) > 127 for c in word):
-            try:
-                lang = detect(word)
-                if lang != 'en':
-                    languages.add(lang)
-            except LangDetectException:
-                continue
+        if not is_english_word(word) and any(ord(c) > 127 for c in word):
+            non_english_words.append(word)
+    
+    # If we found non-English words, try to detect their language
+    if non_english_words:
+        try:
+            combined_text = ' '.join(non_english_words)
+            lang = detect(combined_text)
+            if lang != 'en':
+                languages.add(lang)
+        except LangDetectException:
+            # If detection fails but we have non-ASCII characters,
+            # only mark as unknown if we're confident it's not English
+            if any(not is_english_word(word) and any(ord(c) > 127 for c in word) 
+                  for word in non_english_words):
+                languages.add('unknown')
     
     return languages
 
 def is_non_english(text: str) -> bool:
     """
     Enhanced check for non-English content.
-    Now handles mixed-language content better.
+    Now handles mixed-language content better and avoids false positives.
     """
-    # Skip empty strings and strings with only numbers/symbols
-    if not text or re.match(r'^[\d\s\W_]*$', text):
+    # Skip empty strings, whitespace, and strings with only numbers/symbols
+    if not text or not text.strip() or re.match(r'^[\d\s\W_]*$', text):
         return False
-        
+    
     # Remove common programming symbols and clean up
     text = text.strip('# ')
-    text = re.sub(r'[!@#$%^&*()?":{}|<>]', '', text)
+    text = re.sub(r'[!@#$%^&*()?":{}|<>]', ' ', text)
     
-    # Skip common programming terms
-    if text.lower() in {'str', 'int', 'dict', 'list', 'set', 'bool', 'none', 'true', 'false'}:
+    # Skip if cleaned text is empty
+    if not text.strip():
         return False
     
-    # Check for non-ASCII characters
-    has_non_ascii = any(ord(c) > 127 for c in text)
-    if not has_non_ascii:
+    # First check for Korean characters (Hangul)
+    if any(0xAC00 <= ord(c) <= 0xD7A3 or 0x1100 <= ord(c) <= 0x11FF or 0x3130 <= ord(c) <= 0x318F for c in text):
+        return True
+    
+    # Split into words
+    words = text.split()
+    
+    # If all words are English or common programming terms, it's not non-English
+    if all(is_english_word(word) for word in words):
         return False
     
-    # Detect languages
-    languages = detect_languages_in_text(text)
-    return len(languages) > 0
+    # Check for non-ASCII characters and non-English words
+    for word in words:
+        # Skip if word is a common programming term
+        if word.lower() in {'api', 'url', 'json', 'xml', 'html', 'css', 'js', 'http', 'https', 'ftp', 'ssh', 'tcp', 'udp', 'ip', 'dns', 'sql', 'db', 'gui', 'ui', 'ux', 'cli', 'sdk', 'api', 'rest', 'soap', 'jwt', 'oauth', 'saml', 'ldap', 'ssl', 'tls', 'csv', 'pdf', 'txt', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip', 'tar', 'gz', 'rar', '7z', 'exe', 'dll', 'lib', 'jar', 'war', 'ear', 'apk', 'ipa', 'deb', 'rpm', 'msi', 'iso', 'img', 'dmg', 'pkg', 'app', 'bin', 'sh', 'bat', 'cmd', 'ps1', 'vbs', 'js', 'py', 'rb', 'php', 'java', 'cpp', 'cs', 'go', 'rs', 'ts', 'jsx', 'tsx', 'vue', 'html', 'css', 'scss', 'sass', 'less', 'md', 'rst', 'tex', 'yaml', 'yml', 'toml', 'ini', 'conf', 'cfg', 'env', 'log', 'tmp', 'temp', 'cache', 'bak', 'old', 'new', 'test', 'tests', 'spec', 'specs', 'mock', 'mocks', 'stub', 'stubs', 'fake', 'fakes', 'fixture', 'fixtures', 'helper', 'helpers', 'util', 'utils', 'lib', 'libs', 'vendor', 'node_modules', 'packages', 'dist', 'build', 'release', 'debug', 'prod', 'dev', 'staging', 'qa', 'test', 'local', 'remote', 'master', 'main', 'develop', 'dev', 'feature', 'bugfix', 'hotfix', 'release', 'support', 'patch', 'fix', 'feat', 'docs', 'style', 'refactor', 'perf', 'test', 'build', 'ci', 'chore', 'revert'}:
+            continue
+            
+        # Check for non-ASCII characters
+        if any(ord(c) > 127 for c in word):
+            return True
+            
+        # Check if word is not English
+        if not is_english_word(word):
+            return True
+            
+    return False
 
 def detect_language(text: str) -> str:
     """
@@ -425,31 +429,37 @@ class PythonAstVisitor(ast.NodeVisitor):
     def visit_Str(self, node):
         """Handle string literals"""
         value = node.s
-        self.literals.add(value)
-        if is_non_english(value):
-            # For strings, split and store non-English parts
-            for word in re.findall(r'[^\s!@#$%^&*(),.?":{}|<>]+', value):
-                if any(ord(c) > 127 for c in word):
-                    self.non_english.add(word)
-                    self.non_english_literals.add(word)
+        # Only add non-empty strings to literals
+        if value and value.strip():
+            self.literals.add(value)
+            if is_non_english(value):
+                # For strings, split and store non-English parts
+                for word in re.findall(r'[^\s!@#$%^&*(),.?":{}|<>]+', value):
+                    if word.strip() and any(ord(c) > 127 for c in word):
+                        self.non_english.add(word)
+                        self.non_english_literals.add(word)
         self.generic_visit(node)
 
     def visit_Constant(self, node):
         """Handle constants (Python 3.8+)"""
         if isinstance(node.value, str):
-            self.literals.add(node.value)
-            if is_non_english(node.value):
-                # For strings, split and store non-English parts
-                for word in re.findall(r'[^\s!@#$%^&*(),.?":{}|<>]+', node.value):
-                    if any(ord(c) > 127 for c in word):
-                        self.non_english.add(word)
-                        self.non_english_literals.add(word)
+            value = node.value
+            # Only add non-empty strings to literals
+            if value and value.strip():
+                self.literals.add(value)
+                if is_non_english(value):
+                    # For strings, split and store non-English parts
+                    for word in re.findall(r'[^\s!@#$%^&*(),.?":{}|<>]+', value):
+                        if word.strip() and any(ord(c) > 127 for c in word):
+                            self.non_english.add(word)
+                            self.non_english_literals.add(word)
         elif isinstance(node.value, (int, float, bool, type(None))):
             const_str = str(node.value)
-            self.constants.add(const_str)
-            if is_non_english(const_str):
-                self.non_english.add(const_str)
-                self.non_english_constants.add(const_str)
+            if const_str.strip():
+                self.constants.add(const_str)
+                if is_non_english(const_str):
+                    self.non_english.add(const_str)
+                    self.non_english_constants.add(const_str)
         self.generic_visit(node)
 
     def visit_FunctionDef(self, node):
@@ -552,13 +562,18 @@ def extract_comments(source_lines):
     last_token_type = None  # Track if we're in a docstring or comment
     
     def process_content(content, is_docstring=False):
+        # First check for Korean characters (Hangul)
+        has_korean = any(0xAC00 <= ord(c) <= 0xD7A3 or 0x1100 <= ord(c) <= 0x11FF or 0x3130 <= ord(c) <= 0x318F for c in content)
+        
         if is_docstring:
             docstrings.add(content)
-            if is_non_english(content):
+            if has_korean or is_non_english(content):
                 non_english_docstrings.add(content)
+                non_english_comments.add(content)  # Also add to non-English comments
         else:
+            # For comments, preserve the entire comment if it contains Korean characters
             comments.add(content)
-            if is_non_english(content):
+            if has_korean or is_non_english(content):
                 non_english_comments.add(content)
     
     for i, line in enumerate(source_lines):
@@ -609,26 +624,38 @@ def analyze_code(code: str) -> ParseResult:
     visitor.docstrings.update(docs)
     visitor.non_english_docstrings.update(non_eng_docs)
     
-    # Combine all non-English content
-    all_non_english = (visitor.non_english_identifiers | 
-                      visitor.non_english_literals |
-                      visitor.non_english_class_names |
-                      visitor.non_english_function_names |
-                      visitor.non_english_variables |
-                      visitor.non_english_docstrings |
-                      visitor.non_english_constants |
-                      visitor.non_english_comments)
+    # Filter out empty strings from all collections
+    def filter_empty(s: set) -> set:
+        # Keep Korean text intact
+        return {x for x in s if x and (x.strip() or any(0xAC00 <= ord(c) <= 0xD7A3 or 0x1100 <= ord(c) <= 0x11FF or 0x3130 <= ord(c) <= 0x318F for c in x))}
     
-    # Count actual comments (excluding empty lines and whitespace)
-    actual_comments = {c for c in comments if c.strip()}
+    # Clean all sets in the visitor
+    visitor.literals = filter_empty(visitor.literals)
+    visitor.constants = filter_empty(visitor.constants)
+    visitor.comments = filter_empty(visitor.comments)
+    visitor.non_english = filter_empty(visitor.non_english)
+    visitor.module_attrs = filter_empty(visitor.module_attrs)
+    visitor.function_names = filter_empty(visitor.function_names)
+    visitor.class_names = filter_empty(visitor.class_names)
+    visitor.variables = filter_empty(visitor.variables)
+    visitor.docstrings = filter_empty(visitor.docstrings)
+    visitor.non_english_identifiers = filter_empty(visitor.non_english_identifiers)
+    visitor.non_english_literals = filter_empty(visitor.non_english_literals)
+    visitor.non_english_class_names = filter_empty(visitor.non_english_class_names)
+    visitor.non_english_function_names = filter_empty(visitor.non_english_function_names)
+    visitor.non_english_variables = filter_empty(visitor.non_english_variables)
+    visitor.non_english_docstrings = filter_empty(visitor.non_english_docstrings)
+    visitor.non_english_constants = filter_empty(visitor.non_english_constants)
+    visitor.non_english_comments = filter_empty(visitor.non_english_comments)
+    visitor.identifiers = filter_empty(visitor.identifiers)
     
     return ParseResult(
         keywords=visitor.keywords,
         identifiers=visitor.identifiers,
         literals=visitor.literals,
         constants=visitor.constants,
-        comments=actual_comments,
-        non_english=all_non_english,
+        comments=visitor.comments,
+        non_english=visitor.non_english,
         module_attrs=visitor.module_attrs,
         function_names=visitor.function_names,
         class_names=visitor.class_names,
@@ -646,8 +673,8 @@ def analyze_code(code: str) -> ParseResult:
         identifier_count=len(visitor.identifiers),
         literal_count=len(visitor.literals),
         constant_count=len(visitor.constants),
-        comment_count=len(actual_comments),
-        non_english_count=len(all_non_english),
+        comment_count=len(visitor.comments),
+        non_english_count=len(visitor.non_english),
         function_count=len(visitor.function_names),
         class_count=len(visitor.class_names),
         variable_count=len(visitor.variables),
